@@ -1,8 +1,8 @@
 import argparse, sys, socket
 import json
 #import _thread
-from .server import *
-from .client import *
+from server import *
+from client import *
 import threading
 
 def run_server():
@@ -12,7 +12,7 @@ def run_server():
     # Create the socket
     print("Starting Server....")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(('', '4000'))
+    s.bind(('', 4000))
     s.listen(5)
 
     while True:
@@ -37,7 +37,7 @@ def run_client(clientid: int, accountid: int):
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
     # Connect to the server
-    s.connect('', '4000')
+    s.connect('', 4000)
 
     # Send the ID of the user and their account
     packet = {
@@ -78,3 +78,6 @@ def main():
             run_client(args.clientid, args.accountid)
         else:
             print("Client ID or Account ID not specified or invalid")
+
+if __name__=="__main__": 
+    main()

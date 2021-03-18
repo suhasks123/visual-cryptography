@@ -1,4 +1,4 @@
-from .account import *
+from account import *
 import threading
 import json
 from typing import *
