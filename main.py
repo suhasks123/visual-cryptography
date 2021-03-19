@@ -40,6 +40,8 @@ def run_client(clientid: int, accountid: int):
     # Connect to the server
     s.connect('', 4000)
 
+    client = Client(s)
+
     # Send the ID of the user and their account
     packet = {
         "accountid": accountid,
@@ -77,16 +79,16 @@ def run_client(clientid: int, accountid: int):
 
         # Requests from the server are prioritized over user requests
         if len(request_json) != 0:
-            handle_client_request(request_json)
+            client.handle_client_request(request_json)
             continue
 
         # If there are no requests from the server, the user requests are executed
         if user_input == "1":
-            initiate_request("credit")
+            client.initiate_request("credit")
         if user_input == "2":
-            initiate_request("debit")
+            client.initiate_request("debit")
         if user_input == "3":
-            initiate_request("view")
+            client.initiate_request("view_request")
         if user_input == "4":
             sys.exit()
 
