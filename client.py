@@ -9,18 +9,13 @@ class Client:
         self.request_thread = request_thread
     
 
-def listen_for_requests(conn):
-    while True:
-        request_json = conn.recv(1024)
+def handle_client_request(request_json):
+    request = json.loads(request_json)
 
-        # Send main thread to background
-        main_t = threading.main_thread()
+    if request['type'] == 'partial_image':
+        print("Request for partial image")
+    elif request['type'] == 'approval':
+        print("Request for approval")
 
-        # Convert message to dictionary
-        request = json.loads(request_json)
-
-        if request['type'] == 'partial_image':
-            print("Request for partial image")
-        elif request['type'] == 'approval':
-            print("Request for approval")
-
+def initiate_request(request_type):
+    print(request_type)

@@ -4,6 +4,7 @@ import json
 from server import *
 from client import *
 import threading
+import select
 
 def run_server():
     # Create a server object
@@ -46,10 +47,48 @@ def run_client(clientid: int, accountid: int):
     }
     s.send(json.dumps(packet))
 
-    listen_thread = threading.Thread(target=listen_for_requests, args=(s,))
-    listen_thread.start()
+    # Create two events, one for the start of a transaction and one for end
+    # transaction_start = threading.Event()
+    # transaction_end = threading.Event()
 
-    # Store this thread and the main thread in the Client object
+    # input_thread = threading.Thread(target=take_input, args=(s,))
+    # input_thread.start()
+
+    while True:
+        print("Enter a choice:\n")
+        print("1. Credit Amount\n")
+        print("2. Debit Amount\n")
+        print("3. View Balance\n")
+        print("4. Exit\n")
+
+        # The select statement is used to select between the data being read from the socket and stdin
+        read_list, write_list, excep_list = select.select([s, sys.stdin], [], [])
+
+        request_json = ""
+
+        # Check the data that has been read
+        for inp in read_list:
+            if inp == s:
+                request_json = s.recv(1024)
+                print("Request received from server")
+                break
+            elif inp == sys.stdin:
+                user_input = sys.stdin.readline()
+
+        # Requests from the server are prioritized over user requests
+        if len(request_json) != 0:
+            handle_client_request(request_json)
+            continue
+
+        # If there are no requests from the server, the user requests are executed
+        if user_input == "1":
+            initiate_request("credit")
+        if user_input == "2":
+            initiate_request("debit")
+        if user_input == "3":
+            initiate_request("view")
+        if user_input == "4":
+            sys.exit()
 
 
 
