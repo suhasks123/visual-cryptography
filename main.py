@@ -24,7 +24,7 @@ def run_server():
         print('Connected to :', addr[0], ':', addr[1])
 
         # Start new thread for handling the client
-        T = threading.Thread(target=handle_client, args=(conn,))
+        T = threading.Thread(target=handle_client, args=(conn,server,))
         T.start()
 
     # Close the socket when loop exits
@@ -44,8 +44,8 @@ def run_client(clientid: int, accountid: int):
 
     # Send the ID of the user and their account
     packet = {
-        "accountid": accountid,
-        "clientid": clientid
+        "account_id": accountid,
+        "client_id": clientid
     }
     s.send(json.dumps(packet))
 

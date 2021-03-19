@@ -26,11 +26,11 @@ def handle_client(conn, server):
         global is_transaction
         is_transaction = True
         request = json.loads(request_json)
-        handle_server_request(request, server)
+        handle_server_request(request, server, initial_ids['account_id'], initial_ids['client_id'])
         is_transaction = False
         transaction_lock.release()
 
-def handle_server_request(request: Dict, server: Server):
+def handle_server_request(request: Dict, server: Server, account_id, client_id):
     if request['type'] == 'credit':
         server.accounts[request['account_id']].credit(request)
     elif request['type'] == 'debit':
