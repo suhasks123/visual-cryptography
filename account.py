@@ -5,6 +5,8 @@ import threading
 import imagehash
 from typing import *
 from struct import unpack, pack
+from shared import *
+
 
 class User:
 
@@ -42,12 +44,8 @@ class SharedAccount:
                 'msg': 'Debit',
                 'status': 'Successful'
             }
-            packet_json = json.dumps(packet)
 
-            to_send = packet_json.encode('utf-8')
-            data_length = pack('>Q', len(to_send))
-            self.stakeholders[request['client_id']].conn.sendall(data_length)
-            self.stakeholders[request['client_id']].conn.sendall(to_send)
+            send_data(packet, self.stakeholders[request['client_id']].conn)
 
         else:
             print("Debit not successful")
@@ -60,13 +58,7 @@ class SharedAccount:
                 'balance': self.balance
             }
 
-            packet_json = json.dumps(packet)
-
-            to_send = packet_json.encode('utf-8')
-
-            data_length = pack('>Q', len(to_send))
-            self.stakeholders[request['client_id']].conn.sendall(data_length)
-            self.stakeholders[request['client_id']].conn.sendall(to_send)
+            send_data(packet, self.stakeholders[request['client_id']].conn)
 
         else:
             print('Authentication failed')
@@ -76,22 +68,12 @@ class SharedAccount:
         packet = {
             'type' : "partial_image"
         }
-        packet_json = json.dumps(packet)
-        to_send = packet_json.encode('utf-8')
-        data_length = pack('>Q', len(to_send))
-        user.conn.sendall(data_length)
-        user.conn.sendall(to_send)
 
-        # Receiving huge files is done in chunks
-        data_length_bin = user.conn.recv(8)
-        (data_length,) = unpack('>Q', data_length_bin)
-        response_json_bin = b''
-        while len(response_json_bin) < data_length:
-            to_read = data_length - len(response_json_bin)
-            response_json_bin += user.conn.recv(4096 if to_read > 4096 else to_read)
+        # Send request for partial image
+        send_data(packet, user.conn)
 
-        response_json = response_json_bin.decode('utf-8')
-        response = json.loads(response_json)
+        # Receive partial image
+        response = receive_data(user.conn)
 
         img_bytes = response["img"].encode("latin1")
         img_object = Image.frombuffer(mode="1", data=img_bytes, size=(response['w'], response['h']))
@@ -102,26 +84,16 @@ class SharedAccount:
 
     def get_approval(self, user, packet):
 
-        packet_json = json.dumps(packet)
-        to_send = packet_json.encode('utf-8')
-
-        data_length = pack('>Q', len(to_send))
-        user.conn.sendall(data_length)
-        user.conn.sendall(to_send)
+        send_data(packet, user.conn)
 
         # Wait for approval response
-        # Receiving huge files is done in chunks
-        data_length_bin = user.conn.recv(8)
-        (data_length,) = unpack('>Q', data_length_bin)
-        response_json_bin = b''
-        while len(response_json_bin) < data_length:
-            to_read = data_length - len(response_json_bin)
-            response_json_bin += user.conn.recv(4096 if to_read > 4096 else to_read)
-
-        response_json = response_json_bin.decode('utf-8')
-        response = json.loads(response_json)
-
-        return response["approval"]
+        # Approval Response
+        response = receive_data(user.conn)
+        
+        if response["approval"] == "YES":
+            return True
+        elif response["approval"] == "NO":
+            return False
 
     def check_hash(self, img_hash, user):
         return str(img_hash) == user.img_hash
@@ -130,8 +102,8 @@ class SharedAccount:
 
         # Two input images
         input_images = []
-        for i in range (self.stakeholders.size):
-            filename = "img" + self.stakeholders[i].uid
+        for i in range (len(self.stakeholders)):
+            filename = "img" + str(self.stakeholders[i].uid) + ".jpg"
             img = Image.open(filename)
             input_images.append(img)
 
@@ -159,8 +131,7 @@ class SharedAccount:
         if self.check_hash(img_hash, user) == False:
             print("Current hash:", str(img_hash))
             print("User hash:", user.img_hash)
-            #raise Exception("The Hash From user dosent match")
-            #return True
+            # return False
 
         filename = "img" + str(uid) + ".jpg"
         img.save(filename)
@@ -169,6 +140,9 @@ class SharedAccount:
         # If all are done then combine()
         # Wait till all the partial images are obtained
         self.barrier_obj.wait()
+
+        # Reset the barrier
+        self.barrier_obj.reset()
 
         # Combine the images
         combined_img = self.combine()
@@ -184,15 +158,5 @@ class SharedAccount:
             "type": "approval"
         }
 
-        approved = self.get_approval(user, packet)
-        
-        if approved == "YES":
-            return True
-        elif approved == "NO":
-            return False
-
-
-
-
-
+        return self.get_approval(user, packet)
 

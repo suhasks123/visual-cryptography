@@ -2,6 +2,7 @@ from account import *
 import threading
 import json
 from typing import *
+import select
 
 class Server:
 
@@ -15,39 +16,36 @@ transaction_lock = threading.Lock()
 
 def handle_client(conn, server):
 
-    # Receiving huge files is done in chunks
-    data_length_bin = conn.recv(8)
-    (data_length,) = unpack('>Q', data_length_bin)
-    initial_ids_json_bin = b''
-    while len(initial_ids_json_bin) < data_length:
-        to_read = data_length - len(initial_ids_json_bin)
-        initial_ids_json_bin += conn.recv(4096 if to_read > 4096 else to_read)
+    # Receive the initial_ids
+    initial_ids = receive_data(conn)
 
-    initial_ids_json = initial_ids_json_bin.decode('utf-8')
-    print("Initial IDs packet received: ", initial_ids_json)
-    initial_ids = json.loads(initial_ids_json)
+    print("Initial IDs packet received: ", initial_ids)
 
     server.accounts[initial_ids['account_id']].stakeholders[initial_ids['client_id']].conn = conn
 
     while True:
         #request_json_bin = ""
-        # Receiving huge files is done in chunks
-        data_length_bin = conn.recv(8)
-        (data_length,) = unpack('>Q', data_length_bin)
-        request_json_bin = b''
-        while len(request_json_bin) < data_length:
-            to_read = data_length - len(request_json_bin)
-            request_json_bin += conn.recv(4096 if to_read > 4096 else to_read)
+        read_list, write_list, excep_list = select.select([conn], [], [], 0.5)
+        for inp in read_list:
 
-        request_json = request_json_bin.decode('utf-8')
-        print("Request packet received: ", request_json)
-        transaction_lock.acquire(blocking=False)
-        global is_transaction
-        is_transaction = True
-        request = json.loads(request_json)
-        handle_server_request(request, server, initial_ids['account_id'], initial_ids['client_id'])
-        is_transaction = False
-        transaction_lock.release()
+            # If data is received through the packet
+            if inp == conn:
+
+                # Receiving huge files is done in chunks
+                request = receive_data(conn)
+
+                print("Request packet received: ", request)
+                transaction_lock.acquire(blocking=False)
+                global is_transaction
+                is_transaction = True
+                server.current_request = request
+                handle_server_request(request, server, initial_ids['account_id'], initial_ids['client_id'])
+                is_transaction = False
+                transaction_lock.release()
+                server.current_request = None
+
+        if is_transaction == True and server.current_request != None:
+            handle_server_request(server.current_request, server, initial_ids['account_id'], initial_ids['client_id'])
 
 def handle_server_request(request: Dict, server: Server, account_id, client_id):
     if request['type'] == 'credit':

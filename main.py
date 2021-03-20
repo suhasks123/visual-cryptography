@@ -4,6 +4,7 @@ import json
 from server import *
 from client import *
 from account import *
+from shared import *
 import threading
 import select
 
@@ -78,11 +79,7 @@ def run_client(clientid: int, accountid: int):
         "client_id": clientid
     }
 
-    packet_json = json.dumps(packet)
-    to_send = packet_json.encode('utf-8')
-    data_length = pack('>Q', len(to_send))
-    s.sendall(data_length)
-    s.sendall(to_send)
+    send_data(packet, s)
 
     while True:
         print("Enter a choice:\n")
@@ -94,28 +91,22 @@ def run_client(clientid: int, accountid: int):
         # The select statement is used to select between the data being read from the socket and stdin
         read_list, write_list, excep_list = select.select([s, sys.stdin], [], [])
 
-        request_json = ""
+        flag = False
 
         # Check the data that has been read
         for inp in read_list:
             if inp == s:
-                # Receiving huge files is done in chunks
-                data_length_bin = s.recv(8)
-                (data_length,) = unpack('>Q', data_length_bin)
-                request_json_bin = b''
-                while len(request_json_bin) < data_length:
-                    to_read = data_length - len(request_json_bin)
-                    request_json_bin += s.recv(4096 if to_read > 4096 else to_read)
-                request_json = request_json_bin.decode('utf-8')
-                print("Request received from server: ", request_json)
+                request = receive_data(s)
+                flag = True
+                print("Request received from server: ", request)
                 break
             elif inp == sys.stdin:
                 user_input = sys.stdin.readline()
                 print("user_input:", user_input)
 
         # Requests from the server are prioritized over user requests
-        if len(request_json) != 0:
-            client.handle_client_request(request_json)
+        if flag == True:
+            client.handle_client_request(request)
             continue
 
         # If there are no requests from the server, the user requests are executed

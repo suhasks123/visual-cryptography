@@ -2,6 +2,7 @@ import json
 import threading
 from PIL import Image
 from struct import pack
+from shared import *
 
 class Client:
 
@@ -10,8 +11,7 @@ class Client:
         self.account_id = account_id
         self.client_id = client_id
 
-    def handle_client_request(self, request_json):
-        request = json.loads(request_json)
+    def handle_client_request(self, request):
 
         if request['type'] == 'partial_image':
             self.partial_img_request()
@@ -31,13 +31,7 @@ class Client:
             "client_id": self.client_id
         }
 
-        packet_json = json.dumps(packet)
-
-        to_send = packet_json.encode('utf-8')
-
-        data_length = pack('>Q', len(to_send))
-        self.conn.sendall(data_length)
-        self.conn.sendall(to_send)
+        send_data(packet, self.conn)
 
     def partial_img_request(self):
         filename = "./testImages/part" + str(self.client_id+1) + ".jpg"
@@ -55,15 +49,7 @@ class Client:
             "client_id": self.client_id
         }
 
-        packet_json = json.dumps(packet)
-
-        to_send = packet_json.encode('utf-8')
-
-        data_length = pack('>Q', len(to_send))
-
-        self.conn.sendall(data_length)
-
-        self.conn.sendall(to_send)
+        send_data(packet, self.conn)
 
     def approval_request(self, request):
 
@@ -93,11 +79,5 @@ class Client:
             "client_id": self.client_id
         }
 
-        packet_json = json.dumps(packet)
-
-        to_send = packet_json.encode('utf-8')
-
-        data_length = pack('>Q', len(to_send))
-        self.conn.sendall(data_length)
-        self.conn.sendall(to_send)
+        send_data(packet, self.conn)
 
