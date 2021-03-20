@@ -4,6 +4,7 @@ from PIL import Image
 import threading
 import imagehash
 from typing import *
+from struct import unpack, pack
 
 class User:
 
@@ -44,8 +45,9 @@ class SharedAccount:
             packet_json = json.dumps(packet)
 
             to_send = packet_json.encode('utf-8')
-
-            self.stakeholders[request['client_id']].conn.send(to_send)
+            data_length = pack('>Q', len(to_send))
+            self.stakeholders[request['client_id']].conn.sendall(data_length)
+            self.stakeholders[request['client_id']].conn.sendall(to_send)
 
         else:
             print("Debit not successful")
@@ -62,7 +64,10 @@ class SharedAccount:
 
             to_send = packet_json.encode('utf-8')
 
-            self.stakeholders[request['client_id']].conn.send(to_send)
+            data_length = pack('>Q', len(to_send))
+            self.stakeholders[request['client_id']].conn.sendall(data_length)
+            self.stakeholders[request['client_id']].conn.sendall(to_send)
+
         else:
             print('Authentication failed')
 
@@ -73,34 +78,53 @@ class SharedAccount:
         }
         packet_json = json.dumps(packet)
         to_send = packet_json.encode('utf-8')
-        user.conn.send(to_send) 
+        data_length = pack('>Q', len(to_send))
+        user.conn.sendall(data_length)
+        user.conn.sendall(to_send)
 
-        response_json_bin = user.conn.recv(524288)
+        # Receiving huge files is done in chunks
+        data_length_bin = user.conn.recv(8)
+        (data_length,) = unpack('>Q', data_length_bin)
+        response_json_bin = b''
+        while len(response_json_bin) < data_length:
+            to_read = data_length - len(response_json_bin)
+            response_json_bin += user.conn.recv(4096 if to_read > 4096 else to_read)
+
         response_json = response_json_bin.decode('utf-8')
-        # f = open("debug.txt", "w")
-        # f.write(response_json)
         response = json.loads(response_json)
 
         img_bytes = response["img"].encode("latin1")
         img_object = Image.frombuffer(mode="1", data=img_bytes, size=(response['w'], response['h']))
+
+        img_object.save("sth.jpg")
         
         return img_object
 
-    def get_approval(self, user):
-        packet = {
-            'type' : "approval"
-        }
+    def get_approval(self, user, packet):
+
         packet_json = json.dumps(packet)
         to_send = packet_json.encode('utf-8')
-        user.conn.send(to_send)
-        response_json_bin = user.conn.recv(524288)
+
+        data_length = pack('>Q', len(to_send))
+        user.conn.sendall(data_length)
+        user.conn.sendall(to_send)
+
+        # Wait for approval response
+        # Receiving huge files is done in chunks
+        data_length_bin = user.conn.recv(8)
+        (data_length,) = unpack('>Q', data_length_bin)
+        response_json_bin = b''
+        while len(response_json_bin) < data_length:
+            to_read = data_length - len(response_json_bin)
+            response_json_bin += user.conn.recv(4096 if to_read > 4096 else to_read)
+
         response_json = response_json_bin.decode('utf-8')
         response = json.loads(response_json)
 
         return response["approval"]
 
     def check_hash(self, img_hash, user):
-        return img_hash == user.img_hash
+        return str(img_hash) == user.img_hash
     
     def combine(self):
 
@@ -132,10 +156,13 @@ class SharedAccount:
         img = self.get_partial_image(user)
         img_hash = imagehash.average_hash(img)
 
-        if self.check_hash(img_hash, user) == 0:
-            raise Exception("The Hash From user dosent match")
+        if self.check_hash(img_hash, user) == False:
+            print("Current hash:", str(img_hash))
+            print("User hash:", user.img_hash)
+            #raise Exception("The Hash From user dosent match")
+            #return True
 
-        filename = "img" + str(uid)
+        filename = "img" + str(uid) + ".jpg"
         img.save(filename)
         
         # Check for all threads
@@ -153,14 +180,11 @@ class SharedAccount:
         packet = {
             "img": img_str,
             "width": w,
-            "height": h
+            "height": h,
+            "type": "approval"
         }
 
-        packet_json = json.dumps(packet)
-        to_send = packet_json.encode('utf-8')
-        user.conn.send(to_send)
-
-        approved = self.get_approval(user)
+        approved = self.get_approval(user, packet)
         
         if approved == "YES":
             return True

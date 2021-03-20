@@ -15,8 +15,8 @@ def InitializeServer():
     name2 = "Kumar"
     email1 = "raj@gmail.com"
     email2 = "kumar@gmail.com"
-    img_hash1 = 0xff81a1818589bd00
-    img_hash2 = 0xff8191818181bd00
+    img_hash1 = "ff81a1818589bd00"
+    img_hash2 = "ff8191818181bd00"
 
     user1 = User(uid1, account_id, name1, email1, img_hash1)
     user2 = User(uid2, account_id, name2, email2, img_hash2)
@@ -80,7 +80,9 @@ def run_client(clientid: int, accountid: int):
 
     packet_json = json.dumps(packet)
     to_send = packet_json.encode('utf-8')
-    s.send(to_send)
+    data_length = pack('>Q', len(to_send))
+    s.sendall(data_length)
+    s.sendall(to_send)
 
     while True:
         print("Enter a choice:\n")
@@ -97,7 +99,13 @@ def run_client(clientid: int, accountid: int):
         # Check the data that has been read
         for inp in read_list:
             if inp == s:
-                request_json_bin = s.recv(1024)
+                # Receiving huge files is done in chunks
+                data_length_bin = s.recv(8)
+                (data_length,) = unpack('>Q', data_length_bin)
+                request_json_bin = b''
+                while len(request_json_bin) < data_length:
+                    to_read = data_length - len(request_json_bin)
+                    request_json_bin += s.recv(4096 if to_read > 4096 else to_read)
                 request_json = request_json_bin.decode('utf-8')
                 print("Request received from server: ", request_json)
                 break

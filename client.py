@@ -1,6 +1,7 @@
 import json
 import threading
 from PIL import Image
+from struct import pack
 
 class Client:
 
@@ -34,10 +35,12 @@ class Client:
 
         to_send = packet_json.encode('utf-8')
 
-        self.conn.send(to_send)
+        data_length = pack('>Q', len(to_send))
+        self.conn.sendall(data_length)
+        self.conn.sendall(to_send)
 
     def partial_img_request(self):
-        filename = "./partial" + str(self.client_id) + ".jpg"
+        filename = "./testImages/part" + str(self.client_id+1) + ".jpg"
         img = Image.open(filename)
 
         w, h = img.size
@@ -46,8 +49,8 @@ class Client:
 
         packet = {
             "img": img_str,
-            "width": w,
-            "height": h,
+            "w": w,
+            "h": h,
             "account_id": self.account_id,
             "client_id": self.client_id
         }
@@ -56,7 +59,11 @@ class Client:
 
         to_send = packet_json.encode('utf-8')
 
-        self.conn.send(to_send)
+        data_length = pack('>Q', len(to_send))
+
+        self.conn.sendall(data_length)
+
+        self.conn.sendall(to_send)
 
     def approval_request(self, request):
 
@@ -90,5 +97,7 @@ class Client:
 
         to_send = packet_json.encode('utf-8')
 
-        self.conn.send(to_send)
+        data_length = pack('>Q', len(to_send))
+        self.conn.sendall(data_length)
+        self.conn.sendall(to_send)
 
