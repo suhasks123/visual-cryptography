@@ -1,4 +1,4 @@
-from account import *
+from .account import *
 import threading
 import json
 from typing import *
@@ -8,8 +8,8 @@ class Server:
     # The list of accounts is initially empty
     accounts = []
 
-    def add_new_account(self, new_account: SharedAccount):
-        self.accounts.append(new_account)
+    def __init__(self, accounts):
+        self.accounts = accounts
 
 # Threads synchronization mechanism
 is_transaction = False
@@ -18,10 +18,14 @@ transaction_lock = threading.Lock()
 def handle_client(conn, server):
 
     initial_ids_json = conn.recv(1024)
+    print("Initial IDs packet received: ", initial_ids_json)
     initial_ids = json.loads(initial_ids_json)
+
+    server.accounts[initial_ids['account_id']].stakeholders[initial_ids['client_id']].conn = conn
 
     while True:
         request_json = conn.recv(1024)
+        print("Request packet received: ", request_json)
         transaction_lock.acquire(blocking=False)
         global is_transaction
         is_transaction = True

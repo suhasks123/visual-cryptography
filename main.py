@@ -1,14 +1,39 @@
 import argparse, sys, socket
 import json
 #import _thread
-from server import *
-from client import *
+from .server import *
+from .client import *
+from .account import *
 import threading
 import select
 
+def InitializeServer():
+    uid1 = 1
+    uid2 = 2
+    account_id = 1
+    name1 = "Raj"
+    name2 = "Kumar"
+    email1 = "raj@gmail.com"
+    email2 = "kumar@gmail.com"
+    img_hash1 = 0xff81a1818589bd00
+    img_hash2 = 0xff8191818181bd00
+
+    user1 = User(uid1, account_id, name1, email1, img_hash1)
+    user2 = User(uid2, account_id, name2, email2, img_hash2)
+
+    users = []
+    users.append(user1)
+    users.append(user2)
+
+    balance = 10000
+    account = SharedAccount(account_id, balance, users)
+    server_obj = Server(account)
+
+    return server_obj
+
 def run_server():
     # Create a server object
-    server = Server()
+    server = InitializeServer()
 
     # Create the socket
     print("Starting Server....")
@@ -49,13 +74,6 @@ def run_client(clientid: int, accountid: int):
     }
     s.send(json.dumps(packet))
 
-    # Create two events, one for the start of a transaction and one for end
-    # transaction_start = threading.Event()
-    # transaction_end = threading.Event()
-
-    # input_thread = threading.Thread(target=take_input, args=(s,))
-    # input_thread.start()
-
     while True:
         print("Enter a choice:\n")
         print("1. Credit Amount\n")
@@ -72,7 +90,7 @@ def run_client(clientid: int, accountid: int):
         for inp in read_list:
             if inp == s:
                 request_json = s.recv(1024)
-                print("Request received from server")
+                print("Request received from server: ", request_json)
                 break
             elif inp == sys.stdin:
                 user_input = sys.stdin.readline()
