@@ -27,12 +27,12 @@ class SharedAccount:
         self.barrier_obj = threading.Barrier(len(stakeholders))
 
 
-    def credit(self, request: Dict):
+    def credit(self, request: Dict, client_id):
         self.balance = self.balance + int(request['amt'])
         print("Credit successful, balance: ", self.balance)
 
-    def debit(self, request: Dict):
-        if self.authenticate(request['client_id']) == True:
+    def debit(self, request: Dict, client_id):
+        if self.authenticate(client_id) == True:
             if self.balance - request['amt'] > 0:
                 self.balance = self.balance - int(request['amt'])
             else:
@@ -45,20 +45,20 @@ class SharedAccount:
                 'status': 'Successful'
             }
 
-            send_data(packet, self.stakeholders[request['client_id']].conn)
+            send_data(packet, self.stakeholders[client_id].conn)
 
         else:
             print("Debit not successful")
-    
-    def view_balance(self, request: Dict):
-        if self.authenticate(request['client_id']) == True:
+
+    def view_balance(self, request: Dict, client_id):
+        if self.authenticate(client_id) == True:
             packet = {
-                'type': 'response',
+                'type': 'balance_response',
                 'msg': 'Balance',
                 'balance': self.balance
             }
 
-            send_data(packet, self.stakeholders[request['client_id']].conn)
+            send_data(packet, self.stakeholders[client_id].conn)
 
         else:
             print('Authentication failed')
@@ -89,6 +89,8 @@ class SharedAccount:
         # Wait for approval response
         # Approval Response
         response = receive_data(user.conn)
+
+        self.barrier_obj.wait()
         
         if response["approval"] == "YES":
             return True
@@ -153,8 +155,8 @@ class SharedAccount:
 
         packet = {
             "img": img_str,
-            "width": w,
-            "height": h,
+            "w": w,
+            "h": h,
             "type": "approval"
         }
 

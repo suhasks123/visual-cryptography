@@ -45,12 +45,13 @@ def handle_client(conn, server):
                 server.current_request = None
 
         if is_transaction == True and server.current_request != None:
+            print("Request packet received: ", server.current_request)
             handle_server_request(server.current_request, server, initial_ids['account_id'], initial_ids['client_id'])
 
 def handle_server_request(request: Dict, server: Server, account_id, client_id):
     if request['type'] == 'credit':
-        server.accounts[request['account_id']].credit(request)
+        server.accounts[request['account_id']].credit(request, client_id)
     elif request['type'] == 'debit':
-        server.accounts[request['account_id']].debit(request)
+        server.accounts[request['account_id']].debit(request, client_id)
     elif request['type'] == 'view_request':
-        server.accounts[request['account_id']].view_balance(request)
+        server.accounts[request['account_id']].view_balance(request, client_id)

@@ -98,7 +98,9 @@ def run_client(clientid: int, accountid: int):
             if inp == s:
                 request = receive_data(s)
                 flag = True
-                print("Request received from server: ", request)
+                print("Request received from server: ", request['type'])
+                if request['type'] == 'balance_response':
+                    print("Available Balance: ", request['balance'])
                 break
             elif inp == sys.stdin:
                 user_input = sys.stdin.readline()

@@ -81,3 +81,5 @@ class Client:
 
         send_data(packet, self.conn)
 
+        print("Please wait for all users to approve")
+
