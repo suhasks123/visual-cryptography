@@ -1,3 +1,5 @@
+import json
+
 from PIL import Image
 import imagehash
 # hash = imagehash.average_hash(Image.open('test.png'))
@@ -40,7 +42,7 @@ class SharedAccount:
 
     def get_partial_image(self, user: User):
         packet = {
-            'type' = "partial_image"
+            'type' : "partial_image"
         }
         user.conn.send(json.dumps(packet))
         response_json = user.conn.recv(65536)
@@ -53,7 +55,7 @@ class SharedAccount:
 
     def get_approval(self, user):
         packet = {
-            'type' = "approval"
+            'type' : "approval"
         }
         user.conn.send(json.dumps(packet))
         response_json = user.conn.recv(65536)
@@ -73,12 +75,12 @@ class SharedAccount:
             img = Image.open(filename)
             input_images.append(img)
 
-        outfile = Image.new('1', infile1.size)
+        outfile = Image.new('1', input_images[0].size)
 
         # Combine images
-        for x in range(img[0].size[0]):
-            for y in range(img[0].size[1]):
-                outfile.putpixel((x, y), min(img[0].getpixel((x, y)), img[1].getpixel((x, y))))
+        for x in range(input_images[0].size[0]):
+            for y in range(input_images[0].size[1]):
+                outfile.putpixel((x, y), min(input_images[0].getpixel((x, y)), input_images[1].getpixel((x, y))))
 
         # outfile.save("testImages/combined.png")
         return outfile
@@ -106,7 +108,7 @@ class SharedAccount:
         #Check for all threads
         #If all are done then combine()
         
-        while(allthreadsdone()==0):
+        while(all_threads_done()==0):
         combined_img = combine()
 
         w, h = combined_img.size
