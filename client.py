@@ -30,10 +30,15 @@ class Client:
             "client_id": self.client_id
         }
 
-        self.conn.send(json.dumps(packet))
+        packet_json = json.dumps(packet)
+
+        to_send = packet_json.encode()
+
+        self.conn.send(to_send)
 
     def partial_img_request(self):
-        img = Image.open('./partial.png')
+        filename = "./partial" + str(self.client_id) + ".jpg"
+        img = Image.open(filename)
 
         w, h = img.size
 
@@ -49,7 +54,9 @@ class Client:
 
         packet_json = json.dumps(packet)
 
-        self.conn.send(packet_json)
+        to_send = packet_json.encode()
+
+        self.conn.send(to_send)
 
     def approval_request(self, request):
 
@@ -79,4 +86,9 @@ class Client:
             "client_id": self.client_id
         }
 
-        self.conn.send(json.dumps(packet))
+        packet_json = json.dumps(packet)
+
+        to_send = packet_json.encode()
+
+        self.conn.send(to_send)
+

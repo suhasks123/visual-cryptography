@@ -3,14 +3,9 @@ import json
 from PIL import Image
 import threading
 import imagehash
-# hash = imagehash.average_hash(Image.open('test.png'))
-# print(hash)
 from typing import *
 
 class User:
-
-    # The TCP connection associated with the user
-    conn = None
 
     def __init__(self, uid, account_id, name, email, img_hash):
         self.uid = uid
@@ -18,24 +13,25 @@ class User:
         self.name = name
         self.email = email
         self.img_hash = img_hash
+        self.conn = None
 
 class SharedAccount:
 
-    def __init__(self, id: int, balance: float, stakeholders: List[User]):
-        self.id = id
+    def __init__(self, account_id: int, balance: float, stakeholders: List[User]):
+        self.id = account_id
         self.balance = balance
         self.stakeholders = stakeholders
-        self.barrier_obj = threading.Barrier(stakeholders.size())
+        self.barrier_obj = threading.Barrier(len(stakeholders))
 
 
     def credit(self, request: Dict):
-        self.balance = self.balance + request['amt']
-        print("Credit successful")
+        self.balance = self.balance + int(request['amt'])
+        print("Credit successful, balance: ", self.balance)
 
     def debit(self, request: Dict):
-        if self.authenticate(request['uid']) == True:
+        if self.authenticate(request['client_id']) == True:
             if self.balance - request['amt'] > 0:
-                self.balance = self.balance - request['amt']
+                self.balance = self.balance - int(request['amt'])
             else:
                 print("Debit not successful")
                 return
@@ -45,19 +41,28 @@ class SharedAccount:
                 'msg': 'Debit',
                 'status': 'Successful'
             }
-            self.stakeholders[request['uid']].conn.send(json.dumps(packet))
+            packet_json = json.dumps(packet)
+
+            to_send = packet_json.encode()
+
+            self.stakeholders[request['client_id']].conn.send(to_send)
 
         else:
             print("Debit not successful")
     
     def view_balance(self, request: Dict):
-        if self.authenticate(request['uid']) == True:
+        if self.authenticate(request['client_id']) == True:
             packet = {
                 'type': 'response',
                 'msg': 'Balance',
                 'balance': self.balance
             }
-            self.stakeholders[request['uid']].conn.send(json.dumps(packet))
+
+            packet_json = json.dumps(packet)
+
+            to_send = packet_json.encode()
+
+            self.stakeholders[request['client_id']].conn.send(to_send)
         else:
             print('Authentication failed')
 
@@ -66,8 +71,11 @@ class SharedAccount:
         packet = {
             'type' : "partial_image"
         }
-        user.conn.send(json.dumps(packet))
-        response_json = user.conn.recv(65536)
+        packet_json = json.dumps(packet)
+        to_send = packet_json.encode()
+        user.conn.send(to_send)
+        response_json_bin = user.conn.recv(1024)
+        response_json = response_json_bin.decode('unicode-escape')
         response = json.loads(response_json)
 
         img_bytes = response["img"].encode("latin1")
@@ -79,8 +87,11 @@ class SharedAccount:
         packet = {
             'type' : "approval"
         }
-        user.conn.send(json.dumps(packet))
-        response_json = user.conn.recv(65536)
+        packet_json = json.dumps(packet)
+        to_send = packet_json.encode()
+        user.conn.send(to_send)
+        response_json_bin = user.conn.recv(65536)
+        response_json = response_json_bin.decode('unicode-escape')
         response = json.loads(response_json)
 
         return response["approval"]
@@ -143,7 +154,8 @@ class SharedAccount:
         }
 
         packet_json = json.dumps(packet)
-        user.conn.send(packet_json)
+        to_send = packet_json.encode()
+        user.conn.send(to_send)
 
         approved = self.get_approval(user)
         

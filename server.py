@@ -1,12 +1,9 @@
-from .account import *
+from account import *
 import threading
 import json
 from typing import *
 
 class Server:
-
-    # The list of accounts is initially empty
-    accounts = []
 
     def __init__(self, accounts):
         self.accounts = accounts
@@ -17,14 +14,16 @@ transaction_lock = threading.Lock()
 
 def handle_client(conn, server):
 
-    initial_ids_json = conn.recv(1024)
+    initial_ids_json_bin = conn.recv(1024)
+    initial_ids_json = initial_ids_json_bin.decode('unicode-escape')
     print("Initial IDs packet received: ", initial_ids_json)
     initial_ids = json.loads(initial_ids_json)
 
     server.accounts[initial_ids['account_id']].stakeholders[initial_ids['client_id']].conn = conn
 
     while True:
-        request_json = conn.recv(1024)
+        request_json_bin = conn.recv(1024)
+        request_json = request_json_bin.decode('unicode-escape')
         print("Request packet received: ", request_json)
         transaction_lock.acquire(blocking=False)
         global is_transaction

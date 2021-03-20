@@ -1,16 +1,16 @@
 import argparse, sys, socket
 import json
 #import _thread
-from .server import *
-from .client import *
-from .account import *
+from server import *
+from client import *
+from account import *
 import threading
 import select
 
 def InitializeServer():
-    uid1 = 1
-    uid2 = 2
-    account_id = 1
+    uid1 = 0
+    uid2 = 1
+    account_id = 0
     name1 = "Raj"
     name2 = "Kumar"
     email1 = "raj@gmail.com"
@@ -27,7 +27,11 @@ def InitializeServer():
 
     balance = 10000
     account = SharedAccount(account_id, balance, users)
-    server_obj = Server(account)
+
+    accounts = []
+    accounts.append(account)
+
+    server_obj = Server(accounts)
 
     return server_obj
 
@@ -63,16 +67,19 @@ def run_client(clientid: int, accountid: int):
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
     # Connect to the server
-    s.connect('', 4000)
+    s.connect(('', 4000))
 
-    client = Client(s)
+    client = Client(s, accountid, clientid)
 
     # Send the ID of the user and their account
     packet = {
         "account_id": accountid,
         "client_id": clientid
     }
-    s.send(json.dumps(packet))
+
+    packet_json = json.dumps(packet)
+    to_send = packet_json.encode()
+    s.send(to_send)
 
     while True:
         print("Enter a choice:\n")
@@ -89,11 +96,13 @@ def run_client(clientid: int, accountid: int):
         # Check the data that has been read
         for inp in read_list:
             if inp == s:
-                request_json = s.recv(1024)
+                request_json_bin = s.recv(1024)
+                request_json = request_json_bin.decode('unicode-escape')
                 print("Request received from server: ", request_json)
                 break
             elif inp == sys.stdin:
                 user_input = sys.stdin.readline()
+                print("user_input:", user_input)
 
         # Requests from the server are prioritized over user requests
         if len(request_json) != 0:
@@ -101,13 +110,13 @@ def run_client(clientid: int, accountid: int):
             continue
 
         # If there are no requests from the server, the user requests are executed
-        if user_input == "1":
+        if user_input == "1\n":
             client.initiate_request("credit")
-        if user_input == "2":
+        if user_input == "2\n":
             client.initiate_request("debit")
-        if user_input == "3":
+        if user_input == "3\n":
             client.initiate_request("view_request")
-        if user_input == "4":
+        if user_input == "4\n":
             sys.exit()
 
 
@@ -133,7 +142,7 @@ def main():
     if args.mode == "server" or args.mode == "s" or args.mode == "Server" or args.mode == "S":
         run_server()
     elif args.mode == "client" or args.mode == "c" or args.mode == "Client" or args.mode == "C":
-        if args.clientid > 0 and args.accountid > 0:
+        if args.clientid >= 0 and args.accountid >= 0:
             run_client(args.clientid, args.accountid)
         else:
             print("Client ID or Account ID not specified or invalid")
