@@ -43,7 +43,7 @@ class SharedAccount:
             }
             packet_json = json.dumps(packet)
 
-            to_send = packet_json.encode()
+            to_send = packet_json.encode('utf-8')
 
             self.stakeholders[request['client_id']].conn.send(to_send)
 
@@ -60,7 +60,7 @@ class SharedAccount:
 
             packet_json = json.dumps(packet)
 
-            to_send = packet_json.encode()
+            to_send = packet_json.encode('utf-8')
 
             self.stakeholders[request['client_id']].conn.send(to_send)
         else:
@@ -72,10 +72,13 @@ class SharedAccount:
             'type' : "partial_image"
         }
         packet_json = json.dumps(packet)
-        to_send = packet_json.encode()
-        user.conn.send(to_send)
-        response_json_bin = user.conn.recv(1024)
-        response_json = response_json_bin.decode('unicode-escape')
+        to_send = packet_json.encode('utf-8')
+        user.conn.send(to_send) 
+
+        response_json_bin = user.conn.recv(524288)
+        response_json = response_json_bin.decode('utf-8')
+        # f = open("debug.txt", "w")
+        # f.write(response_json)
         response = json.loads(response_json)
 
         img_bytes = response["img"].encode("latin1")
@@ -88,10 +91,10 @@ class SharedAccount:
             'type' : "approval"
         }
         packet_json = json.dumps(packet)
-        to_send = packet_json.encode()
+        to_send = packet_json.encode('utf-8')
         user.conn.send(to_send)
-        response_json_bin = user.conn.recv(65536)
-        response_json = response_json_bin.decode('unicode-escape')
+        response_json_bin = user.conn.recv(524288)
+        response_json = response_json_bin.decode('utf-8')
         response = json.loads(response_json)
 
         return response["approval"]
@@ -154,7 +157,7 @@ class SharedAccount:
         }
 
         packet_json = json.dumps(packet)
-        to_send = packet_json.encode()
+        to_send = packet_json.encode('utf-8')
         user.conn.send(to_send)
 
         approved = self.get_approval(user)

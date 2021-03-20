@@ -32,7 +32,7 @@ class Client:
 
         packet_json = json.dumps(packet)
 
-        to_send = packet_json.encode()
+        to_send = packet_json.encode('utf-8')
 
         self.conn.send(to_send)
 
@@ -54,7 +54,7 @@ class Client:
 
         packet_json = json.dumps(packet)
 
-        to_send = packet_json.encode()
+        to_send = packet_json.encode('utf-8')
 
         self.conn.send(to_send)
 
@@ -88,7 +88,7 @@ class Client:
 
         packet_json = json.dumps(packet)
 
-        to_send = packet_json.encode()
+        to_send = packet_json.encode('utf-8')
 
         self.conn.send(to_send)
 

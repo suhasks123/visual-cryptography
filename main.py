@@ -42,6 +42,7 @@ def run_server():
     # Create the socket
     print("Starting Server....")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(('', 4000))
     s.listen(5)
 
@@ -78,7 +79,7 @@ def run_client(clientid: int, accountid: int):
     }
 
     packet_json = json.dumps(packet)
-    to_send = packet_json.encode()
+    to_send = packet_json.encode('utf-8')
     s.send(to_send)
 
     while True:
@@ -97,7 +98,7 @@ def run_client(clientid: int, accountid: int):
         for inp in read_list:
             if inp == s:
                 request_json_bin = s.recv(1024)
-                request_json = request_json_bin.decode('unicode-escape')
+                request_json = request_json_bin.decode('utf-8')
                 print("Request received from server: ", request_json)
                 break
             elif inp == sys.stdin:

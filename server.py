@@ -15,7 +15,7 @@ transaction_lock = threading.Lock()
 def handle_client(conn, server):
 
     initial_ids_json_bin = conn.recv(1024)
-    initial_ids_json = initial_ids_json_bin.decode('unicode-escape')
+    initial_ids_json = initial_ids_json_bin.decode('utf-8')
     print("Initial IDs packet received: ", initial_ids_json)
     initial_ids = json.loads(initial_ids_json)
 
@@ -23,7 +23,7 @@ def handle_client(conn, server):
 
     while True:
         request_json_bin = conn.recv(1024)
-        request_json = request_json_bin.decode('unicode-escape')
+        request_json = request_json_bin.decode('utf-8')
         print("Request packet received: ", request_json)
         transaction_lock.acquire(blocking=False)
         global is_transaction
