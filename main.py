@@ -100,7 +100,15 @@ def run_client(clientid: int, accountid: int):
                 flag = True
                 print("Request received from server: ", request['type'])
                 if request['type'] == 'balance_response':
-                    print("Available Balance: ", request['balance'])
+                    if request['status'] == 'Authentication successful':
+                        print("Available Balance: ", request['balance'])
+                    else:
+                        print("Request Denied")
+                elif request['type'] == 'debit_response':
+                    if request['status'] == 'Successful':
+                        print("Available Balance after Debit: ", request['balance'])
+                    else:
+                        print("Request Denied")
                 break
             elif inp == sys.stdin:
                 user_input = sys.stdin.readline()

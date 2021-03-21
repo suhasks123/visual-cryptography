@@ -52,6 +52,7 @@ def handle_server_request(request: Dict, server: Server, account_id, client_id):
     if request['type'] == 'credit':
         server.accounts[request['account_id']].credit(request, client_id)
     elif request['type'] == 'debit':
+        server.debit_done = False
         server.accounts[request['account_id']].debit(request, client_id)
     elif request['type'] == 'view_request':
         server.accounts[request['account_id']].view_balance(request, client_id)

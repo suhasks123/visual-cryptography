@@ -3,6 +3,7 @@ import threading
 from PIL import Image
 from struct import pack
 from shared import *
+import numpy as np
 
 class Client:
 
@@ -37,14 +38,10 @@ class Client:
         filename = "./testImages/part" + str(self.client_id+1) + ".jpg"
         img = Image.open(filename)
 
-        w, h = img.size
-
-        img_str = img.tobytes().decode("latin1")
+        img_str = json.dumps(np.array(img).tolist())
 
         packet = {
             "img": img_str,
-            "w": w,
-            "h": h,
             "account_id": self.account_id,
             "client_id": self.client_id
         }
@@ -53,11 +50,15 @@ class Client:
 
     def approval_request(self, request):
 
-        img_bytes = request["img"].encode("latin1")
+        #img_object = Image.fromarray(np.array(json.loads(request['img']), dtype='uint8'))
 
+        img_bytes = request["img"].encode("latin1")
         img_object = Image.frombuffer(mode="1", data=img_bytes, size=(request['w'], request['h']))
 
-        img_object.save("combined.png")
+
+        combined_filename = "./combined" + str(self.client_id) + ".jpg"
+
+        img_object.save(combined_filename)
 
         print("Combined image generated in the current directory.")
         print("Please verify whether it represents the original secret image.")

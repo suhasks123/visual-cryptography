@@ -6,6 +6,8 @@ import imagehash
 from typing import *
 from struct import unpack, pack
 from shared import *
+import numpy as np
+import threading
 
 
 class User:
@@ -20,6 +22,9 @@ class User:
 
 class SharedAccount:
 
+    debit_lock = threading.Lock()
+    debit_done = False
+
     def __init__(self, account_id: int, balance: float, stakeholders: List[User]):
         self.id = account_id
         self.balance = balance
@@ -33,34 +38,47 @@ class SharedAccount:
 
     def debit(self, request: Dict, client_id):
         if self.authenticate(client_id) == True:
-            if self.balance - request['amt'] > 0:
-                self.balance = self.balance - int(request['amt'])
-            else:
+            acquired = self.debit_lock.acquire(blocking=False)
+            if self.balance - int(request['amt']) > 0:
+                if acquired == True:
+                    self.balance = self.balance - int(request['amt'])
+                    self.debit_done = True
+                    self.debit_lock.release()
+            elif self.balance - int(request['amt']) < 0 and self.debit_done == False:
                 print("Debit not successful")
+                packet = {
+                    'type': 'debit_response',
+                    'status': 'Unsuccessful',
+                    'balance': self.balance
+                }
+                send_data(packet, self.stakeholders[client_id].conn)
                 return
             print("Debit successful")
             packet = {
-                'type': 'response',
-                'msg': 'Debit',
-                'status': 'Successful'
+                'type': 'debit_response',
+                'status': 'Successful',
+                'balance': self.balance
             }
 
             send_data(packet, self.stakeholders[client_id].conn)
-
-        else:
-            print("Debit not successful")
 
     def view_balance(self, request: Dict, client_id):
         if self.authenticate(client_id) == True:
             packet = {
                 'type': 'balance_response',
-                'msg': 'Balance',
+                'status': 'Authentication successful',
                 'balance': self.balance
             }
 
             send_data(packet, self.stakeholders[client_id].conn)
 
         else:
+            packet = {
+                'type': 'balance_response',
+                'status': 'Authentication failed'
+            }
+
+            send_data(packet, self.stakeholders[client_id].conn)
             print('Authentication failed')
 
 
@@ -75,10 +93,7 @@ class SharedAccount:
         # Receive partial image
         response = receive_data(user.conn)
 
-        img_bytes = response["img"].encode("latin1")
-        img_object = Image.frombuffer(mode="1", data=img_bytes, size=(response['w'], response['h']))
-
-        img_object.save("sth.jpg")
+        img_object = Image.fromarray(np.array(json.loads(response['img']), dtype='uint8'))
         
         return img_object
 
@@ -133,7 +148,7 @@ class SharedAccount:
         if self.check_hash(img_hash, user) == False:
             print("Current hash:", str(img_hash))
             print("User hash:", user.img_hash)
-            # return False
+            return False
 
         filename = "img" + str(uid) + ".jpg"
         img.save(filename)
@@ -150,7 +165,6 @@ class SharedAccount:
         combined_img = self.combine()
 
         w, h = combined_img.size
-
         img_str = combined_img.tobytes().decode("latin1")
 
         packet = {
