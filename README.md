@@ -11,3 +11,18 @@ This is a course project for Cryptography and Applications Lab(CS352) taught by 
 - Suhas K S (181CO253).
 - Sai Krishna Anand (181CO244).
 - Aditya Chandrashekhar Sohoni (181CO203).
+
+## Python dependencies: (Apart from the inbuilt libraries)
+- PIL
+- Imagehash
+- json
+- select
+
+## Instructions to execute: 
+The current implementation consists of a shared account between 2 users only. Open 3 terminals(Linux or even WSL) and run the following :
+
+- For server : python3 main.py -m s
+- For user 1 : python3 main.py -m c -c 0 -a 0
+- For user 2 : python3 main.py -m c -c 1 -a 0
+
+Note : The client ids must begin from 0, hence the commands.

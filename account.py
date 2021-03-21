@@ -12,17 +12,18 @@ import threading
 
 class User:
 
+    # Server side information about the clients -> users
     def __init__(self, uid, account_id, name, email, img_hash):
         self.uid = uid
         self.account_id = account_id
         self.name = name
         self.email = email
-        self.img_hash = img_hash
+        self.img_hash = img_hash # Hash of the partial image assigned to each user
         self.conn = None
 
 class SharedAccount:
 
-    debit_lock = threading.Lock()
+    debit_lock = threading.Lock() # Mutex lock to prevent every thread from debiting the amount
     debit_done = False
 
     def __init__(self, account_id: int, balance: float, stakeholders: List[User]):
@@ -31,20 +32,21 @@ class SharedAccount:
         self.stakeholders = stakeholders
         self.barrier_obj = threading.Barrier(len(stakeholders))
 
-
+    # Server credit function
     def credit(self, request: Dict, client_id):
         self.balance = self.balance + int(request['amt'])
         print("Credit successful, balance: ", self.balance)
 
+    # Server debit function
     def debit(self, request: Dict, client_id):
-        if self.authenticate(client_id) == True:
+        if self.authenticate(client_id) == True: # If authenticated, then debit
             acquired = self.debit_lock.acquire(blocking=False)
             if self.balance - int(request['amt']) > 0:
                 if acquired == True:
                     self.balance = self.balance - int(request['amt'])
                     self.debit_done = True
                     self.debit_lock.release()
-            elif self.balance - int(request['amt']) < 0 and self.debit_done == False:
+            elif self.balance - int(request['amt']) < 0 and self.debit_done == False: # If debit amt > remaining balance
                 print("Debit not successful")
                 packet = {
                     'type': 'debit_response',
@@ -63,7 +65,7 @@ class SharedAccount:
             send_data(packet, self.stakeholders[client_id].conn)
 
     def view_balance(self, request: Dict, client_id):
-        if self.authenticate(client_id) == True:
+        if self.authenticate(client_id) == True: # If authentication passes, then display balance
             packet = {
                 'type': 'balance_response',
                 'status': 'Authentication successful',
@@ -81,7 +83,7 @@ class SharedAccount:
             send_data(packet, self.stakeholders[client_id].conn)
             print('Authentication failed')
 
-
+    # Function to request user to send partial image
     def get_partial_image(self, user: User):
         packet = {
             'type' : "partial_image"
@@ -97,6 +99,7 @@ class SharedAccount:
         
         return img_object
 
+    # Function to request user to verify combined image and send approval
     def get_approval(self, user, packet):
 
         send_data(packet, user.conn)
@@ -112,9 +115,11 @@ class SharedAccount:
         elif response["approval"] == "NO":
             return False
 
+    # Checking hash between the stored hash and the hash of the partial image provided by the user
     def check_hash(self, img_hash, user):
         return str(img_hash) == user.img_hash
     
+    # Combine the partial images to display output image
     def combine(self):
 
         # Two input images
@@ -133,24 +138,25 @@ class SharedAccount:
 
         return outfile
 
+    # Driver function to call above helper functions in the process of authentication
     def authenticate(self, uid):
         """
         Requests for the partial images from each user and receives them
-        After receiveing the images, it checks the hash for all the images
+        After receiving the images, it checks the hash for all the images
         :return:
         """
-
+        # Get user id
         user = self.stakeholders[uid]
 
         img = self.get_partial_image(user)
-        img_hash = imagehash.average_hash(img)
+        img_hash = imagehash.average_hash(img) # Produce hash of image provided by user
 
         if self.check_hash(img_hash, user) == False:
             print("Current hash:", str(img_hash))
             print("User hash:", user.img_hash)
             return False
 
-        filename = "img" + str(uid) + ".jpg"
+        filename = "img" + str(uid) + ".jpg"    # Store partial image for combining
         img.save(filename)
         
         # Check for all threads
@@ -173,6 +179,7 @@ class SharedAccount:
             "h": h,
             "type": "approval"
         }
-
+        
+        # Send combined image and request verification by use
         return self.get_approval(user, packet)
 

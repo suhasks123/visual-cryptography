@@ -9,6 +9,8 @@ import threading
 import select
 
 def InitializeServer():
+
+    # Dummy account details for the purpose of demo
     uid1 = 0
     uid2 = 1
     account_id = 0
@@ -95,7 +97,7 @@ def run_client(clientid: int, accountid: int):
 
         # Check the data that has been read
         for inp in read_list:
-            if inp == s:
+            if inp == s: # If input data is from the socket
                 request = receive_data(s)
                 flag = True
                 print("Request received from server: ", request['type'])
@@ -104,13 +106,14 @@ def run_client(clientid: int, accountid: int):
                         print("Available Balance: ", request['balance'])
                     else:
                         print("Request Denied")
+
                 elif request['type'] == 'debit_response':
                     if request['status'] == 'Successful':
                         print("Available Balance after Debit: ", request['balance'])
                     else:
                         print("Request Denied")
                 break
-            elif inp == sys.stdin:
+            elif inp == sys.stdin: # If input data is from the stdin of client
                 user_input = sys.stdin.readline()
                 print("user_input:", user_input)
 
